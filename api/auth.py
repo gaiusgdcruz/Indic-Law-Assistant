@@ -1,5 +1,7 @@
 import os
-import hashlib
+# hashlib is no longer used for password hashing directly in this scheme,
+# it was for the previous client-side SHA256 hashing.
+# import hashlib 
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -24,22 +26,19 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 # In-memory user database (replace with proper database in production)
-# The password "admin123" is first hashed with SHA-256 and then hashed with bcrypt.
+# Passwords are now hashed server-side using bcrypt directly on the raw password.
 fake_users_db = {
     "admin": {
         "username": "admin",
-        "hashed_password": pwd_context.hash(hashlib.sha256("admin123".encode("utf-8")).hexdigest()),  # Change this in production
+        "hashed_password": pwd_context.hash("admin123"),  # bcrypt hash of the raw password "admin123"
         "disabled": False,
     }
 }
 
-
-def verify_password(hashed_input_password: str, stored_hashed_password: str) -> bool:
-    """
-    Verify the SHA-256 hashed incoming password against the stored bcrypt hash.
-    The incoming password is expected to be the SHA-256 hex digest.
-    """
-    return pwd_context.verify(hashed_input_password, stored_hashed_password)
+# Client should send raw passwords. Server hashes them for storage (if applicable) and comparison.
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verifies a plain password against a stored hashed password."""
+    return pwd_context.verify(plain_password, hashed_password)
 
 
 def get_user(db, username: str):
@@ -50,15 +49,18 @@ def get_user(db, username: str):
     return None
 
 
-def authenticate_user(fake_db, username: str, password: str):
+def authenticate_user(fake_db, username: str, plain_password: str):
     """
     Authenticate a user.
-    Expects `password` to be a SHA-256 hex digest generated on the frontend.
+    Expects `plain_password` to be the raw password from the client.
+    Server-side hashing (bcrypt) is used for comparison.
     """
     user = get_user(fake_db, username)
     if not user:
         return False
-    if not verify_password(password, user.hashed_password):
+    # The stored password is user.hashed_password (already bcrypt hashed)
+    # The password from the form is plain_password (raw)
+    if not verify_password(plain_password, user.hashed_password):
         return False
     return user
 

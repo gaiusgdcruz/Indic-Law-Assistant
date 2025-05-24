@@ -33,14 +33,17 @@ from .auth import (
     get_user,
 )
 from .chain import is_legal_query, rag_pipeline
-from .config import GENERATOR_MODEL, REWRITER_RERANKER_MODEL, TRANSLATION_API_URL, ENABLE_TRANSLATION_CHAIN, SECRET_KEY, ALGORITHM
-from .logging_config import setup_logging
+# Ensure config is imported to access its variables
+from . import config
+# from .config import GENERATOR_MODEL, REWRITER_RERANKER_MODEL, TRANSLATION_API_URL, ENABLE_TRANSLATION_CHAIN, SECRET_KEY, ALGORITHM, ALLOWED_ORIGINS
+# Replace old logging setup with the new central one
+from core.logging_utils import get_logger
 from .models import get_llm_generator
 from .prompts import answer_prompt
 from .schemas import ChatMessage, QueryRequest, Token, Language, TranslationRequest, TranslationResponse
 from .utils import format_chat_history, translate_text  # Import translate_text from utils
 
-logger = setup_logging()
+logger = get_logger(__name__) # Use the new central logger
 
 
 # Initialize FastAPI app with lifespan
@@ -70,12 +73,19 @@ app = FastAPI(
 )
 
 # Add CORS middleware
+# Initial startup warning for SECRET_KEY (already handled in config.py on import, but can be reiterated here if needed)
+if config.SECRET_KEY == "a_very_secret_key_for_dev_DO_NOT_USE_IN_PROD":
+    logger.warning(
+        "CRITICAL SECURITY WARNING: The API is running with the default insecure SECRET_KEY. "
+        "This key MUST be changed for production environments by setting a SECRET_KEY environment variable."
+    )
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, replace with specific origins
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=config.ALLOWED_ORIGINS, # Use the configured list
+    allow_credentials=True, # Usually True for web apps with auth
+    allow_methods=["*"],    # Or specify methods like ["GET", "POST"]
+    allow_headers=["*"],    # Or specify allowed headers
 )
 
 # Constants
@@ -133,8 +143,9 @@ async def generate_stream(
 ) -> AsyncGenerator[str, None]:
     try:
         # If translation is enabled and language is not English, translate to English
-        if ENABLE_TRANSLATION_CHAIN and language == Language.MALAYALAM:
-            query = await translate_text(query, Language.MALAYALAM, Language.ENGLISH)
+        # Use config.ENABLE_TRANSLATION_CHAIN and config.TRANSLATION_API_URL
+        if config.ENABLE_TRANSLATION_CHAIN and language == Language.MALAYALAM:
+            query = await translate_text(query, Language.MALAYALAM, Language.ENGLISH) # translate_text should use config.TRANSLATION_API_URL
         
         response_buffer = ""
 
@@ -247,7 +258,8 @@ Answer:"""
                     yield f"data: {json.dumps({'content': response_buffer.strip()})}\n\n"
 
             # If translation is enabled and original language was Malayalam, translate back
-            if ENABLE_TRANSLATION_CHAIN and language == Language.MALAYALAM:
+            # Use config.ENABLE_TRANSLATION_CHAIN
+            if config.ENABLE_TRANSLATION_CHAIN and language == Language.MALAYALAM:
                 response_buffer = await translate_text(response_buffer.strip(), Language.ENGLISH, Language.MALAYALAM)
 
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
@@ -274,7 +286,7 @@ async def login_for_access_token(form_data: dict):
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token_expires = timedelta(minutes=config.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
     )
@@ -291,7 +303,7 @@ async def refresh_access_token(payload: dict):
     if not refresh_token:
         raise HTTPException(status_code=400, detail="Missing refresh token")
     try:
-        token_payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
+        token_payload = jwt.decode(refresh_token, config.SECRET_KEY, algorithms=[config.ALGORITHM])
         username: str = token_payload.get("sub")
         if username is None:
             raise HTTPException(status_code=401, detail="Invalid refresh token (no subject)")
@@ -301,10 +313,10 @@ async def refresh_access_token(payload: dict):
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid refresh token")
 
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token_expires = timedelta(minutes=config.ACCESS_TOKEN_EXPIRE_MINUTES)
     new_access_token = create_access_token(data={"sub": username}, expires_delta=access_token_expires)
     # Optionally, issue a new refresh token as well
-    new_refresh_token = create_refresh_token(data={"sub": username})
+    new_refresh_token = create_refresh_token(data={"sub": username}) # Assuming create_refresh_token also uses config.SECRET_KEY and config.ALGORITHM implicitly or via args
     return {"access_token": new_access_token, "refresh_token": new_refresh_token, "token_type": "bearer"}
 
 
@@ -476,6 +488,6 @@ if __name__ == "__main__":
     # Ensure Ollama server is running and models are pulled before starting
     print("Starting FastAPI server for RAG API...")
     print("Ensure Ollama is running with required models:")
-    print(f"  Generator: {GENERATOR_MODEL}")
-    print(f"  Rewriter/Reranker: {REWRITER_RERANKER_MODEL}")
+    print(f"  Generator: {config.GENERATOR_MODEL}")
+    print(f"  Rewriter/Reranker: {config.REWRITER_RERANKER_MODEL}")
     uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -18,37 +18,19 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 # Assuming config.py is at the same level as the parser directory or accessible
 # If config.py is inside parser/, use: from . import config
 from parser import config # Use relative import if config.py is in the same dir
+from core.logging_utils import get_logger # Import the new central logger
 
 
 # =========================
-# Logger Setup (global for main process and worker configuration)
+# Logger Setup
 # =========================
-LOG_SUBDIR = config.LOG_FOLDER # Use path from config
-os.makedirs(LOG_SUBDIR, exist_ok=True)
+# Remove old logger setup. The new logger will handle file logging if APP_LOG_FILE_PATH is set.
+# Specific parser logs (like the old parse_embed_pipeline_{today}.log) are not directly supported
+# by the new central logger by default, but all logs will go to APP_LOG_FILE_PATH and console.
+# If a separate log file for parser is still desired, it would need custom handling
+# outside the scope of get_logger, or get_logger could be extended.
 
-today = datetime.now().strftime("%Y-%m-%d")
-log_filename = os.path.join(LOG_SUBDIR, f"parse_embed_pipeline_{today}.log")
-
-# Basic formatter for multiprocessing logging
-formatter = logging.Formatter("%(asctime)s [%(levelname)s] [%(processName)s] %(message)s", "%Y-%m-%d %H:%M:%S")
-
-def setup_logger():
-    # Setup logger to handle multiprocessing correctly if needed
-    # For simplicity, basic setup is often sufficient if workers log independently
-    logger = logging.getLogger() # Get root logger
-    if not logger.hasHandlers(): # Avoid adding handlers multiple times
-        logger.setLevel(logging.INFO)
-        # File handler
-        file_handler = logging.FileHandler(log_filename)
-        file_handler.setFormatter(formatter)
-        logger.addHandler(file_handler)
-        # Console handler
-        console_handler = logging.StreamHandler()
-        console_handler.setFormatter(formatter)
-        logger.addHandler(console_handler)
-    return logger
-
-logger = setup_logger()
+logger = get_logger(__name__) # Use the new central logger
 
 
 # =========================
@@ -142,12 +124,13 @@ def worker_process_single_pdf(pdf_path_tuple: Tuple[str, str]) -> Tuple[str, boo
     from datetime import datetime
     import os
     import shutil
-    import logging # Setup logging specific to worker if needed, or use root logger
+    # logging is already imported via core.logging_utils
+    # from core.logging_utils import get_logger # Already imported at top level
 
-    # Get logger instance (it might inherit root logger config)
-    worker_logger = logging.getLogger(multiprocessing.current_process().name)
-    worker_logger.setLevel(logging.INFO) # Or get level from config?
-    process_name = multiprocessing.current_process().name
+    # Get logger instance for the worker using the new utility
+    # The level will be determined by LOG_LEVEL env var or default in get_logger
+    worker_logger = get_logger(multiprocessing.current_process().name)
+    process_name = multiprocessing.current_process().name # Still useful for log messages if desired
     pdf_filename = os.path.basename(pdf_path)
     sanitized_base_name = sanitize_filename(pdf_filename.replace('.pdf', ''))
     metadata_path = os.path.join(config.METADATA_FOLDER, f"{sanitized_base_name}_metadata.json")
@@ -311,11 +294,14 @@ def worker_process_single_pdf(pdf_path_tuple: Tuple[str, str]) -> Tuple[str, boo
 # Entry Point / Main Process
 # =========================
 if __name__ == "__main__":
-    # Ensure logger is set up for the main process
-    setup_logger()
+    # Logger is already set up at the module level using get_logger(__name__)
+    # No need to call setup_logger() anymore.
     logger.info("Starting PDF processing script using multiprocessing (Pool Size 1).")
 
     # Ensure required folders exist (run by main process)
+    # Note: LOG_FOLDER from parser.config is for the old parser-specific log.
+    # The new central logger uses APP_LOG_FILE_PATH from .env for its file output.
+    # We still create parser-specific folders like UPLOAD_FOLDER, etc.
     required_folders = [config.UPLOAD_FOLDER, config.PROCESSED_FOLDER, config.METADATA_FOLDER, config.VECTOR_STORE_FOLDER, config.LOG_FOLDER]
     for folder in required_folders: os.makedirs(folder, exist_ok=True)
 

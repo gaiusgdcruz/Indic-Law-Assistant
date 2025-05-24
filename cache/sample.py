@@ -5,8 +5,13 @@ from redisvl.extensions.llmcache import SemanticCache
 from cache_vectorizer import vectorizer
 from dotenv import load_dotenv
 
-load_dotenv()
-redis_url = "redis://"+config.DB_HOST+":6379"
+# Ensure config is imported relatively if sample.py is part of the cache module
+from . import config 
+from .cache_vectorizer import vectorizer # Ensure relative import
+
+load_dotenv(dotenv_path=config.dotenv_path) # Load .env from the path specified in config
+
+redis_url = f"redis://{config.CACHE_REDIS_HOST}:{config.CACHE_REDIS_PORT}/{config.CACHE_REDIS_DB}"
 # Initialize Semantic Cache
 
 try:
@@ -14,13 +19,18 @@ try:
         name=config.CACHE_NAME,
         redis_url=redis_url,
         distance_threshold=0.1,
-        vectorizer=vectorizer,
+        vectorizer=vectorizer, # This vectorizer uses config.CACHE_EMBEDDING_MODEL
         connection_kwargs={
             'decode_responses': True,
             'socket_timeout': 5,
             'retry_on_timeout': True
-        },
-        dimension=768
+        }
+        # dimension is often inferred by redisvl based on the first vector stored,
+        # or can be explicitly set if known for CACHE_EMBEDDING_MODEL.
+        # For "nomic-embed-text" (default CACHE_EMBEDDING_MODEL), the dimension is 768.
+        # If CACHE_EMBEDDING_MODEL is changed, this might need adjustment or to be dynamic.
+        # For now, assuming the default or that the user manages this.
+        # dimension=768 # Example: for nomic-embed-text
     )
 except Exception as e:
     print(f"Error initializing SemanticCache: {e}")
@@ -28,7 +38,8 @@ except Exception as e:
 
 question = input("Enter your question:")
 
-client = ChatOllama(model=config.OLLAMA_MODEL, verbose=True)
+# Use CACHE_OLLAMA_MODEL for the sample script's LLM interaction
+client = ChatOllama(model=config.CACHE_OLLAMA_MODEL, verbose=True)
 
 
 def ask_ollama(question: str) -> str:

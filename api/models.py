@@ -1,4 +1,5 @@
-import logging
+# Replace old logging setup with the new central one
+from core.logging_utils import get_logger
 from typing import List, Optional
 
 from langchain_core.embeddings import Embeddings
@@ -8,7 +9,7 @@ from sentence_transformers import SentenceTransformer
 
 from . import config
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__) # Use the new central logger
 
 # Cache instances to avoid re-initialization on every request
 _llm_generator = None

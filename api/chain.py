@@ -1,5 +1,6 @@
 import asyncio
-import logging
+# Replace old logging setup with the new central one
+from core.logging_utils import get_logger 
 from concurrent.futures import ThreadPoolExecutor
 
 from langchain_core.output_parsers import StrOutputParser
@@ -21,10 +22,10 @@ from .reranker import get_reranker  # Use the singleton getter function
 from .utils import format_chat_history, format_docs
 from .vector_store import _initialize_vector_store
 from .schemas import Language
-from .config import ENABLE_TRANSLATION_CHAIN
+from .config import ENABLE_TRANSLATION_CHAIN # This should be config.ENABLE_TRANSLATION_CHAIN
 from .utils import translate_text
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__) # Use the new central logger
 
 # Create a global executor for vector store operations
 _vector_store_executor = ThreadPoolExecutor(max_workers=2)
@@ -140,7 +141,8 @@ async def embed_and_retrieve(query, vectorstore):
 
 
 async def translation_chain(text: str, source_lang: str, target_lang: str) -> str:
-    if not ENABLE_TRANSLATION_CHAIN or source_lang == target_lang:
+    # Use config.ENABLE_TRANSLATION_CHAIN
+    if not config.ENABLE_TRANSLATION_CHAIN or source_lang == target_lang:
         return text
     try:
         logger.info(f"Translating from {source_lang} to {target_lang}")
@@ -275,10 +277,11 @@ def build_rag_chain() -> RunnableSerializable:
         try:
             query = input_data.get("query", "")
             chat_history = input_data.get("chat_history", [])
-            source_lang = input_data.get("source_language", "en")
-            target_lang = input_data.get("target_language", source_lang)
+            source_lang = input_data.get("source_language", "en") # Make sure these keys are always passed
+            # target_lang = input_data.get("target_language", source_lang) # target_lang is not used here
 
-            if ENABLE_TRANSLATION_CHAIN and source_lang != "en":
+            # Use config.ENABLE_TRANSLATION_CHAIN
+            if config.ENABLE_TRANSLATION_CHAIN and source_lang != "en":
                 query = await translation_chain(query, source_lang, "en")
 
             rag_input = {
@@ -288,7 +291,8 @@ def build_rag_chain() -> RunnableSerializable:
             result = await rag_chain.ainvoke(rag_input)
 
             answer = result.get("answer", "")
-            if ENABLE_TRANSLATION_CHAIN and source_lang != "en":
+            # Use config.ENABLE_TRANSLATION_CHAIN
+            if config.ENABLE_TRANSLATION_CHAIN and source_lang != "en": # Check source_lang, not target_lang for this logic
                 answer = await translation_chain(answer, "en", source_lang)
                 result["answer"] = answer
 

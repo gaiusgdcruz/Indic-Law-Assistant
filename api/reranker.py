@@ -1,4 +1,5 @@
-import logging
+# Replace old logging setup with the new central one
+from core.logging_utils import get_logger
 from typing import List, Optional, Tuple
 from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError
 
@@ -9,7 +10,7 @@ from sentence_transformers import CrossEncoder
 from .config import REWRITER_RERANKER_MODEL
 from .prompts import rerank_prompt
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__) # Use the new central logger
 
 
 # Create a global executor that will be shared across all rerankers

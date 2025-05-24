@@ -1,11 +1,14 @@
 from langchain_ollama import OllamaEmbeddings
 from redisvl.utils.vectorize import CustomTextVectorizer
 import asyncio
-import config
+from . import config # Ensure relative import
 from typing import List
 
 def create_vectorizer():
-    ollama_embedder = OllamaEmbeddings(model=config.EMBEDDING_MODEL)
+    # Use CACHE_EMBEDDING_MODEL for the semantic cache's own vectorizer
+    # If it needs to align with the main app's RAG embeddings, 
+    # then config.EMBEDDING_MODEL_FOR_CACHE_VECTORIZER (or similar) should be used.
+    ollama_embedder = OllamaEmbeddings(model=config.CACHE_EMBEDDING_MODEL) 
 
     def sync_embed(text: str) -> List[float]:
         return ollama_embedder.embed_query(text)

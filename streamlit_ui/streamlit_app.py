@@ -4,27 +4,25 @@ import json
 from datetime import datetime
 import asyncio
 from typing import Optional, Tuple
-import logging
+# Replace old logging setup with the new central one
+from core.logging_utils import get_logger
 import os
 from dotenv import load_dotenv
 import time
-import hashlib
+# hashlib is no longer used as password hashing is server-side
+# import hashlib
 
 # Load environment variables
-load_dotenv()
+# Ensure .env is loaded from project root if streamlit_app.py is in a subdirectory
+dotenv_path = os.path.join(os.path.dirname(__file__), '..', '.env')
+if os.path.exists(dotenv_path):
+    load_dotenv(dotenv_path=dotenv_path)
+else:
+    load_dotenv() # Load .env from current directory or default path if not found in root
 
-# Configure logging
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)  # Set to INFO level to capture important logs
-
-# Create file handler for logging
-file_handler = logging.FileHandler('streamlit_app.log')
-file_handler.setLevel(logging.INFO)  # Log only INFO and above to file
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-file_handler.setFormatter(formatter)
-
-# Add the file handler to the logger
-logger.addHandler(file_handler)
+# Configure logging using the new central utility
+# The old file handler 'streamlit_app.log' will be replaced by the central APP_LOG_FILE_PATH
+logger = get_logger(__name__)
 
 # Update the title and description
 st.set_page_config(
@@ -47,16 +45,18 @@ if 'chat_history' not in st.session_state:
     st.session_state.chat_history = []
 if 'language' not in st.session_state:
     st.session_state.language = "en"
+if 'api_base_url' not in st.session_state:
+    st.session_state.api_base_url = os.getenv("API_BASE_URL", "http://localhost:8000")
+
 
 async def login(username: str, password: str) -> bool:
-    """Authenticate with the API using a hashed password"""
+    """Authenticate with the API using the raw password."""
     try:
-        # Hash the password using SHA-256
-        hashed_password = hashlib.sha256(password.encode('utf-8')).hexdigest()
+        # Send the raw password directly
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                "http://localhost:8000/token",
-                json={"username": username, "password": hashed_password}
+                f"{st.session_state.api_base_url}/token", # Use configured API base URL
+                json={"username": username, "password": password} # Send raw password
             )
             if response.status_code == 200:
                 data = response.json()
@@ -74,7 +74,7 @@ async def refresh_token() -> bool:
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                "http://localhost:8000/token/refresh",
+                f"{st.session_state.api_base_url}/token/refresh", # Use configured API base URL
                 json={"refresh_token": st.session_state.refresh_token}
             )
             if response.status_code == 200:
@@ -123,7 +123,7 @@ async def process_stream_async(query: str) -> Optional[str]:
         # Define a helper to send the request
         async def send_request():
             return await client.post(
-                "http://localhost:8000/stream",
+                f"{st.session_state.api_base_url}/stream", # Use configured API base URL
                 json={
                     "query": query,
                     "language": st.session_state.language,
