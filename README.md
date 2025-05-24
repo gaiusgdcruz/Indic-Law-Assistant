@@ -4,6 +4,18 @@ A Retrieval-Augmented Generation (RAG) system designed for Indian legal document
 
 ---
 
+## 🏗️ Project Structure
+
+This project is organized into several modules, each with its own specific role:
+
+-   **`./` (Main Application)**: The root of the project, containing general configuration and this main README.
+-   **`api/`**: Provides the FastAPI backend that serves the RAG pipeline, handles user authentication, and manages interactions with language models. ([Details in api/README.md](api/README.md))
+-   **`parser/`**: Responsible for processing PDF documents, extracting text, generating embeddings, and populating the vector store. ([Details in parser/README.md](parser/README.md))
+-   **`streamlit_ui/`**: Contains the Streamlit application for user interaction, allowing users to query the system and view results. ([Details in streamlit_ui/README.md](streamlit_ui/README.md))
+-   **`cache/`**: Implements an alternative semantic caching mechanism using Redis and RedisVL. Note that the main API uses a different caching strategy. ([Details in cache/README.md](cache/README.md))
+
+Each module directory contains a specific `README.md` with more detailed information about its functionality and setup.
+
 ## ✨ Prerequisites
 
 Ensure the following are installed before running the project:
@@ -45,14 +57,16 @@ ollama serve
 source venv/bin/activate  # or venv\Scripts\activate on Windows
 ```
 
-3. **Navigate to the API folder**:
-```bash
-cd api/
-```
-
-4. **Install dependencies**:
+3. **Install dependencies**:
+Navigate to the project root directory (where this README is located) and install all dependencies:
 ```bash
 pip install -r requirements.txt
+```
+This file includes dependencies for the API, parser, and UI. Module-specific `requirements.txt` files (e.g., in `api/`, `streamlit_ui/`, `cache/`) list subsets of these for informational or isolated setup purposes, but the root `requirements.txt` is comprehensive.
+
+4. **Navigate to the API folder**:
+```bash
+cd api/
 ```
 
 5. **Run the FastAPI server**:
@@ -88,19 +102,21 @@ http://localhost:8000/docs
 
 ## 💬 Streamlit UI Setup
 
-1. **Navigate to the Streamlit UI folder**:
+1. **Ensure API is Running**: The Streamlit UI (`streamlit_app.py`) interacts with the FastAPI backend, so make sure it's running (see FastAPI Setup above).
+
+2. **Install dependencies** (if you haven't already done so from the root `requirements.txt`):
+It's recommended to install dependencies from the root `requirements.txt` as it's comprehensive. However, if setting up in isolation:
+```bash
+pip install -r streamlit_ui/requirements.txt
+```
+
+3. **Navigate to the Streamlit UI folder**:
 ```bash
 cd streamlit_ui/
 ```
 
-2. **Install dependencies**:
+4. **Run the Streamlit app**:
 ```bash
-pip install -r requirements.txt
+streamlit run streamlit_app.py
 ```
-
-3. **Run the Streamlit app**:
-```bash
-streamlit run main.py
-```
-
-The app should launch in your browser for interactive legal queries.
+The app should launch in your browser. For more details on the UI, including the simpler `main.py` (which connects directly to Ollama), see the [streamlit_ui/README.md](streamlit_ui/README.md).
