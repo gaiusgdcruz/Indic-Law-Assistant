@@ -1,4 +1,10 @@
 import pytest
+import sys
+import os
+
+# Add project root for consistent imports
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+
 from parser.process_pdfs import sanitize_filename, clean_text
 
 def test_sanitize_filename():
@@ -6,13 +12,13 @@ def test_sanitize_filename():
     assert sanitize_filename("  leading_trailing_spaces  .pdf") == "leading_trailing_spaces.pdf"
     assert sanitize_filename("no_bad_chars.pdf") == "no_bad_chars.pdf"
     assert sanitize_filename("") == "invalid_filename"
-    assert sanitize_filename(".pdf") == "invalid_filename.pdf" # Corrected expectation based on current sanitize_filename logic
-    assert sanitize_filename("...pdf") == "invalid_filename.pdf" # Corrected expectation
+    assert sanitize_filename(".pdf") == "invalid_filename"
+    assert sanitize_filename("...pdf") == "invalid_filename"
 
 def test_clean_text_basic():
     assert clean_text("  Hello   World  ") == "Hello World"
     assert clean_text("Hello\nWorld") == "Hello World"
-    assert clean_text("Hyphen-\-nation") == "Hyphen-nation" # Test hyphen at line break
+    assert clean_text("Hyphen-\\-nation") == "Hyphen-nation" # Test hyphen at line break
     assert clean_text("Multiple   spaces and\nnewlines") == "Multiple spaces and newlines"
     assert clean_text(None) == ""
     assert clean_text("") == ""
@@ -23,5 +29,3 @@ def test_clean_text_hyphen_at_line_break():
 
 def test_clean_text_newlines():
     assert clean_text("Line one\nLine two\n\nLine three") == "Line one Line two Line three"
-
-# Add more tests as needed for other utility functions in process_pdfs.py

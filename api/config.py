@@ -17,6 +17,7 @@ EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "paraphrase-multilingual-MiniLM-L
 # --- RAG Pipeline Settings ---
 INITIAL_RETRIEVAL_K = int(os.getenv("INITIAL_RETRIEVAL_K", 10))
 RERANKED_TOP_N = int(os.getenv("RERANKED_TOP_N", 5))
+VECTOR_STORE_POOL_WORKERS = int(os.getenv("VECTOR_STORE_POOL_WORKERS", 2))
 
 # --- Vector Store Settings ---
 CHROMA_DB_PATH = os.getenv("CHROMA_DB_PATH", os.path.join(os.path.dirname(os.path.dirname(__file__)), "parser", "vector_db", "law_docs"))
@@ -72,3 +73,13 @@ if TRANSLATION_API_URL == DEFAULT_TRANSLATION_URL and ENABLE_TRANSLATION_CHAIN:
         "This is suitable for development/testing only. For production, set a stable TRANSLATION_API_URL.",
         UserWarning
     )
+
+# --- Semantic Cache Settings ---
+CACHE_REDIS_HOST = os.getenv("CACHE_REDIS_HOST", "localhost")
+CACHE_REDIS_PORT = int(os.getenv("CACHE_REDIS_PORT", 6379))
+CACHE_REDIS_DB = int(os.getenv("CACHE_REDIS_DB", 0))
+CACHE_NAME = os.getenv("CACHE_NAME", "llm_semantic_cache")
+# It's often good to use a fast, lightweight model for cache embeddings
+CACHE_EMBEDDING_MODEL = os.getenv("CACHE_EMBEDDING_MODEL", "nomic-embed-text:latest")
+# Threshold for cache hit, from 0 (exact match) to 1 (very dissimilar)
+CACHE_THRESHOLD = float(os.getenv("CACHE_THRESHOLD", 0.1))

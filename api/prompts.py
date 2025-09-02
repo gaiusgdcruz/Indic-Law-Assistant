@@ -116,7 +116,7 @@ Analysis:"""
 
 # Simplified rewrite prompt for better performance
 rewrite_prompt = PromptTemplate.from_template("""
-Rewrite this question to be more specific and focused on legal concepts: {original_query}
+Rewrite this question to be more specific and focused on legal concepts: {query}
 Keep it concise and focused on key legal terms. Output only the rewritten query, no other text.
 """)
 
@@ -157,3 +157,35 @@ Don't make up information or continue with uncertain answers."""
 # Simple query prompt
 simple_chat_prompt = """You are a helpful assistant. Answer this question clearly and concisely: {query}
 If you're not sure, say so and stop."""
+
+LEGAL_QUERY_CLASSIFIER_PROMPT = PromptTemplate.from_template(
+    """
+Classify the following query as either "LEGAL" or "GENERAL".
+Your response should only be the word "LEGAL" or "GENERAL". Do not add any other text.
+
+A "LEGAL" query pertains to laws, legal cases, statutes, regulations, courts, or legal procedures, particularly within the Indian legal system.
+A "GENERAL" query is any other question, including conversational greetings, questions about the weather, or non-legal topics.
+
+Here are some examples:
+
+Query: What is the punishment for theft under the IPC?
+Classification: LEGAL
+
+Query: Tell me about the Kesavananda Bharati case.
+Classification: LEGAL
+
+Query: What is the weather like today?
+Classification: GENERAL
+
+Query: who are you?
+Classification: GENERAL
+
+Query: what is a bail?
+Classification: LEGAL
+
+---
+Now, classify the following query:
+
+Query: {query}
+Classification:"""
+)
