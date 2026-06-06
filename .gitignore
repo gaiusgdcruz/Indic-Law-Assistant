@@ -172,3 +172,21 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+#app
+vector_store/
+.idea/
+.cursorignore
+__pycache__
+api/__pycache__
+acts/
+logs/
+chroma_db/
+chroma_data/
+parser/metadata/
+parser/processed_pdfs/
+parser/uploads/
+parser/bad_docs/
+parser/Law-Documents/
+parser/vector_db
+parser/embeddings
